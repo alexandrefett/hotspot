@@ -1,30 +1,19 @@
 package com.hotspot;
 
 import com.google.gson.Gson;
-import com.google.gson.JsonArray;
-import com.google.gson.JsonObject;
 import com.mongodb.*;
-import com.mongodb.client.FindIterable;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoCursor;
 import com.mongodb.client.MongoDatabase;
-import com.mongodb.client.model.Filters;
 import com.mongodb.client.result.DeleteResult;
 import me.legrange.mikrotik.ApiConnection;
-import me.legrange.mikrotik.ApiConnectionException;
 import me.legrange.mikrotik.MikrotikApiException;
-import me.legrange.mikrotik.ResultListener;
 import org.bson.Document;
-import org.bson.types.ObjectId;
 import spark.Request;
-import sun.security.provider.MD5;
-
-import javax.net.ssl.HttpsURLConnection;
 import java.io.*;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLDecoder;
-import java.net.URLEncoder;
 import java.util.*;
 
 public class UserService {
@@ -46,7 +35,6 @@ public class UserService {
             while (cursor.hasNext()) {
                 System.out.println("-------------------------");
                 System.out.println("cursor");
-//                System.out.println(cursor.next().toString());
                 users.add(new User((Document) cursor.next()));
             }
         } finally {
@@ -75,34 +63,9 @@ public class UserService {
         return users;
     }
 
-    public List<User> init2() {
-        Document d = new Document("name", "Alexandre")
-                .append("email", "alexandrefett@gmail.com")
-                .append("mac", "74:D4:35:B7:C5:4B");
-        createUser(d.toJson());
-        return findAll();
-    }
-
-    public List<User> init() {
-        List<Document> data = new ArrayList<Document>();
-
-
-        data.add(new Document("name", "Alexandre")
-                .append("email", "alexandrefett@gmail.com")
-                .append("mac", "74:D4:35:B7:C5:4B"));
-
-        collection.insertMany(data);
-        return findAll();
-    }
-
-    public void createNewUser(String body) {
-        User user = new Gson().fromJson(body, User.class);
-        //collection.insert(new BasicDBObject("email", user.getEmail()).append("mac", user.getMac()).append("createdOn", new Date()));
-    }
-
     public String reset() {
         DeleteResult r = collection.deleteMany(new Document());
-        return r.getDeletedCount() + "OK";
+        return r.getDeletedCount() + " OK";
     }
 
     public User find(String id) {
@@ -113,56 +76,6 @@ public class UserService {
         User user = new Gson().fromJson(body, User.class);
         //collection.update(new BasicDBObject("_id", new ObjectId(userId)), new BasicDBObject("$set", new BasicDBObject("mac", user.getMac())));
         return this.find(userId);
-    }
-
-    public String createUser(String body) {
-        //String name, String email, String mac){
-        Document u = Document.parse(body);
-        String name = u.getString("name");
-        String email = u.getString("email");
-        String mac = u.getString("mac");
-        try {
-            collection.insertOne(u);
-            ApiConnection con = connect();
-
-            // connection.execute(String.format("/ip/hotspot/user/profile/add name=%s","userprofile"));
-
-            String command = "/ip/hotspot/user/add name=" + mac +
-                    " email=" + email +
-                    " mac-address=" + mac +
-                    " profile=guest comment=" + name + "|" + email + "|" + mac;
-            System.out.println("-------------------------");
-            System.out.println("command: " + command);
-
-            con.execute(command, new ResultListener() {
-                @Override
-                public void receive(Map<String, String> map) {
-                    collection.insertOne(u);
-                }
-
-                @Override
-                public void error(MikrotikApiException e) {
-                    System.out.println("-------------------------");
-                    System.out.println("error:" + e.getMessage());
-                }
-
-                @Override
-                public void completed() {
-                    System.out.println("-------------------------");
-                    System.out.println("completed");
-                    try {
-                        con.close();
-                    } catch (ApiConnectionException e) {
-                        e.printStackTrace();
-                    }
-                }
-            });
-        } catch (MikrotikApiException e) {
-            e.printStackTrace();
-        } catch (MongoException e) {
-            e.printStackTrace();
-        }
-        return "{\"status\":\"OK\"}";
     }
 
     private boolean addUserMikrotik(ApiConnection con, String name, String email, String mac){
@@ -195,9 +108,14 @@ public class UserService {
 
     private boolean removeUserMikrotik(ApiConnection con, String mac){
         try {
-            String remove = "/ip/hotspot/user/remove name=" + mac;
+//            String remove = "/ip/hotspot/user/remove name=" + mac;
+            String remove = "/ip/hotspot/user/print where name="+mac;
             System.out.println("removeUserMikrotik: " + remove);
-            con.execute(remove);
+            List<Map<String,String>> res = con.execute(remove);
+            for (Map<String, String> attr : res) {
+                String id = attr.get(".id");
+                con.execute("/ip/hotspot/user/remove .id=" + id);
+            }
         } catch (MikrotikApiException e){
             System.out.println("MikrotikApiException:"+e.getMessage());
             return false;
@@ -217,7 +135,7 @@ public class UserService {
         return true;
     }
 
-    public boolean login(Request body) {
+    public int login(Request body) {
 
         try {
             System.out.println("login: " + body.body());
@@ -237,19 +155,19 @@ public class UserService {
                         loginUserMikrotik(com, ip, mac);
                         addUserMongoDB(name, email, mac);
                     } else {
-                        return false;
+                        return 500;
                     }
                 }
             }
         } catch (Exception e) {
             e.printStackTrace();
         }
-        return true;
+        return 200;
     }
 
     private ApiConnection connect() {
         try {
-            ApiConnection con = ApiConnection.connect("192.168.1.1"); // connect to router
+            ApiConnection con = ApiConnection.connect("10.1.0.1"); // connect to router
             con.login("alexandrefett", "ax34y0"); // log in to router
             System.out.println("Mikrotik connected");
             return con;
@@ -262,7 +180,7 @@ public class UserService {
 
     private void sendPost(String name, String email, String mac, String pass) throws Exception {
 
-        String url = "http://192.168.1.1/login";
+        String url = "http://10.1.0.1/login";
         URL obj = new URL(url);
         HttpURLConnection con = (HttpURLConnection) obj.openConnection();
 

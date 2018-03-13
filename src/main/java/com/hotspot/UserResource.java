@@ -24,18 +24,17 @@ public class UserResource {
 
         get(API_CONTEXT + "/login", (req, res) -> {
             System.out.println("-------------------------");
-            if(userService.login(req)){
-                res.redirect("http://wwww.everest.com.br");
-            } else {
-                res.redirect("error.html", 500);
+            switch(userService.login(req)){
+                case 200:{
+                    res.redirect("http://www.everest.com.br");
+                    break;
+                }
+                case 500:{
+                    res.redirect("error.html", 500);
+                    break;
+                }
             }
             return null;
-        }, new JsonTransformer());
-
-        post(API_CONTEXT + "/newuser", (req, res) -> {
-            userService.createUser(req.body());
-                    res.status(201);
-                    return res;
         }, new JsonTransformer());
 
         get(API_CONTEXT + "/users/id/:id", "application/json", (request, response)
@@ -50,11 +49,9 @@ public class UserResource {
         put(API_CONTEXT + "/users/:id", "application/json", (request, response)
                 -> userService.update(request.params(":id"), request.body()), new JsonTransformer());
 
-        get(API_CONTEXT + "/init", "application/json", (request, response)
-                -> userService.init2(), new JsonTransformer());
-
         get(API_CONTEXT + "/reset", "application/json", (request, response)
                 -> userService.reset(), new JsonTransformer());
+
     }
 
 }
