@@ -23,7 +23,6 @@ public class UserResource {
         get("/hello", (req, res) -> "Hello World");
 
         get(API_CONTEXT + "/login", (req, res) -> {
-            System.out.println("-------------------------");
             switch(userService.login(req)){
                 case 200:{
                     res.redirect("http://www.everest.com.br");

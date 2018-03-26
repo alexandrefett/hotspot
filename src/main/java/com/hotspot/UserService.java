@@ -28,12 +28,10 @@ public class UserService {
     public List<User> findAll() {
         MongoCursor cursor = collection.find().iterator();
         List<User> users = new ArrayList<User>();
-        System.out.println("-------------------------");
         System.out.println("findall:");
 
         try {
             while (cursor.hasNext()) {
-                System.out.println("-------------------------");
                 System.out.println("cursor");
                 users.add(new User((Document) cursor.next()));
             }
@@ -46,14 +44,11 @@ public class UserService {
     public List<User> findAll(String email) {
         MongoCursor cursor = collection.find(new Document("email", email)).iterator();
         List<User> users = new ArrayList<User>();
-        System.out.println("-------------------------");
         System.out.println("findall:");
 
         try {
             while (cursor.hasNext()) {
-                System.out.println("-------------------------");
                 System.out.println("cursor");
-//                System.out.println(cursor.next().toString());
                 users.add(new User((Document) cursor.next()));
             }
         } finally {
@@ -108,7 +103,6 @@ public class UserService {
 
     private boolean removeUserMikrotik(ApiConnection con, String mac){
         try {
-//            String remove = "/ip/hotspot/user/remove name=" + mac;
             String remove = "/ip/hotspot/user/print where name="+mac;
             System.out.println("removeUserMikrotik: " + remove);
             List<Map<String,String>> res = con.execute(remove);
@@ -213,9 +207,7 @@ public class UserService {
         }
         in.close();
 
-        //print result
         System.out.println(response.toString());
     }
 }
 
-// "/ip/hotspot/active/add name=50:92:B9:3C:C6:6A
